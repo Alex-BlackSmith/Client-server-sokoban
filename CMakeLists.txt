@@ -10,9 +10,9 @@ link_directories(/home/akuznetsov/libtcod/ ) #/home/akuznetsov/sokoban_proj/cmak
 #cmake-build-debug/sec_client.cpp
 #cmake-build-debug/cl_main2.cpp
 
-add_executable(server main.cpp /home/akuznetsov/Client-server-sokoban/TwoDimArray.h)
-add_executable(client /home/akuznetsov/Client-server-sokoban/cl_main.cpp TwoDimArray.h)
-add_executable(client2 /home/akuznetsov/Client-server-sokoban/cl_main2.cpp TwoDimArray.h)
+add_executable(server main.cpp TwoDimArray.h)
+add_executable(client cl_main.cpp TwoDimArray.h)
+add_executable(client2 cl_main2.cpp TwoDimArray.h)
 
 target_link_libraries(server -ltcod -ltcodxx )
 target_link_libraries(client -ltcod -ltcodxx )

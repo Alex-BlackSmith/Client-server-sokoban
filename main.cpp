@@ -42,98 +42,50 @@ void chkKeyKeyAndMovePlayer(const char& key ,vector<int>& tmpPlrPos, TwoDimArray
 //That function updates vector containing win positions
 void updateWinPositions(TwoDimArray<char>& twoDArray, map<vector<int>,char>& mapOfWinPositions);
 
+void ConstructAndSendBuffer(const int socket_desctriptor, TwoDimArray<char>& TDA);
+
 //That function check WIN condition for the current structure
 bool ifWin(map<vector<int>,char>& mapOfWinPositions);
 
 //That fucntion processes appropriate ip4 or ip6 address
 void *get_approp_addr(struct sockaddr *sock_a);
 
-void sigchld_handler(int s)
-{
-    // waitpid() might overwrite errno, so we save and restore it:
-    int saved_errno = errno;
-    while(waitpid(-1, NULL, WNOHANG) > 0);
-    errno = saved_errno;
-}
-
-
-
 int main(void)
 {
+    string GetRandomFileByPath(const char* user_path);
     TwoDimArray<char> Test;
-    const TCODColor player {0,255,0};
-    const TCODColor wall{255,0,0};
-    const TCODColor box{255,255,0};
-    const TCODColor winCross{255,255,255};
-    const vector<TCODColor> colourVec = {player, wall, box, winCross}; //0 - player, 1 - wall, 2 - box, 3 - winCross
-    vector<int> tempPlrPos1;
-    vector<int> tempPlrPos2;//temporary player position vector (x,y)
+    vector<int> tempPlrPos1; //temporary player1 position vector (x,y)
+    vector<int> tempPlrPos2; //temporary player2 position vector (x,y)
     map<vector<int>,char> mapCharWin; // vector of win positions "(x,y) - character"
-char playerChar1 = 'P';
-char playerChar2 = 'K';
-    //string fileName = std::to_string(rand() % nmbOfMaps) + ".txt";
-    //cout << fileName << endl;
-
-
-    srand( time(0) );
-    DIR *dir;
-    vector<char*> vecOfFiles;
-    struct dirent *ent;
-    if ((dir = opendir ("/home/akuznetsov/server_proj/")) != NULL) {
-        while ((ent = readdir (dir)) != NULL) {
-            char* ch = ent -> d_name;
-            string tr = ent -> d_name;
-            char type[3];
-            type[0] = ch[tr.length() - 7];
-            type[1] = ch[tr.length() - 6];
-            type[2] = ch[tr.length() - 5];
-            type[3] = ch[tr.length() - 4];
-            type[4] = ch[tr.length() - 3];
-            type[5] = ch[tr.length() - 2];
-            type[6] = ch[tr.length() - 1];
-            if((type[0] == 'm') && (type[1] == 'a') && (type[2] == 'p') 
-            && (type[3] == '.') 
-            && (type[4] == 't') && (type[5] == 'x')&& (type[6] == 't')){
-                vecOfFiles.push_back(ch);
-            }
-        }
-        closedir (dir);
-    } else {
-        /* could not open directory */
-        perror ("");
-        return EXIT_FAILURE;
-    }
-    string fileName = vecOfFiles[(rand() % vecOfFiles.size())];
-
+    char playerChar1 = 'P'; // character denotes 1-st player
+    char playerChar2 = 'K'; // character denotes 1-st player
+    const char* path = "/home/akuznetsov/Client-server-sokoban/"; //path with maps
+    string fileName = GetRandomFileByPath(path); //call to function, which return full path to a random file
+    string tobuff;
+    char* newb;
+    
+    
     ifstream in(fileName);
     std::ifstream file(fileName, std::ios::binary | std::ios::ate);
     std::streamsize size = file.tellg();
     file.seekg(0, std::ios::beg);
     char buffer[size];
     file.read(buffer, size);
-    if (!isMapSent1 && !isMapSent2){
+    if (!isMapSent2){
         in >> Test;
-        firstFill(Test, tempPlrPos1, tempPlrPos2, mapCharWin);
+        firstFill(Test, tempPlrPos1, tempPlrPos2, mapCharWin); // fill structures that 
+        // contains all coordinates of players and objects on map
     }
-
+    
     char buf[MAXBUFFERSIZE];
     int sock, new_sock1,new_sock2,numbytes, addrlen, client_socket[1] ,
             max_clients = 1 , activity, i , valread , sd;
     struct addrinfo hints, *servinfo1, *p;
     struct sockaddr_storage their_addr; // connector's address information
     socklen_t sin_size;
-    int max_sd;
-    struct sockaddr_in address;
-    struct sigaction sa;
     int yes=1;
     char address_pres[INET6_ADDRSTRLEN];
-    fd_set readfds;
-
-    for (int i = 0; i < max_clients; i++)
-    {
-        client_socket[i] = 0;
-    }
-
+    
     int rv;
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_UNSPEC;
@@ -163,27 +115,10 @@ char playerChar2 = 'K';
         }
         break;
     }
-    /*freeaddrinfo(servinfo1); // all done with this structure
-    if (p == NULL)  {
-        fprintf(stderr, "server: failed to bind\n");
-        exit(1);
-    }*/
+    
     if (listen(sock, 1) == -1) {
         perror("listen");
-        //exit(1);
     }
-
-    /*sa.sa_handler = sigchld_handler; // reap all dead processes
-    sigemptyset(&sa.sa_mask);
-    sa.sa_flags = SA_RESTART;,,,,
-    if (sigaction(SIGCHLD, &sa, NULL) == -1) {
-        perror("sigaction");
-        exit(1);
-    }
-    */
-
-
-
 
     sin_size = sizeof their_addr;
 
@@ -191,15 +126,11 @@ char playerChar2 = 'K';
     fcntl(new_sock1,F_SETFL, O_NONBLOCK);
     new_sock2 = accept(sock, (struct sockaddr *) &their_addr, &sin_size);
     fcntl(new_sock2,F_SETFL, O_NONBLOCK);
-
-
+    
     inet_ntop(their_addr.ss_family,
               get_approp_addr((struct sockaddr *) &their_addr),
               address_pres, sizeof address_pres);
     printf("server: got connection from %s\n", address_pres);
-
-    cout << "NS1 - " << new_sock1 << endl;
-    cout << "NS2 - " << new_sock2 << endl;
 
     printf("server: waiting for connections...\n");
     bool turn1 = true, turn2 = false;
@@ -219,33 +150,9 @@ char playerChar2 = 'K';
 
         //Request for MAP to server from client n1
         if ((recv(new_sock1, buf, MAXBUFFERSIZE - 1, MSG_DONTWAIT)) == -1) {
-            //perror("recv from 1-st client");
             if ((*isMapSentPtr1)){
-
-                //default map send
-                string tobuff = std::to_string(Test.getDimY()) + " " + std::to_string(Test.getDimX());
-                char newb[Test.getDimX() * Test.getDimY() + tobuff.size() + Test.getDimY()];
-                for (int i = 0; i < tobuff.size(); i++) {
-                    newb[i] = tobuff[i];
-                }
-                for (int i = tobuff.size(), j = 0;
-                     i <= Test.getDimX() * Test.getDimY() + tobuff.size() + Test.getDimY();) {
-                    if (((i - tobuff.size()) % ((Test.getDimX()) + 1) == 0)) {
-                        newb[i] = '\n';
-                    } else {
-                        newb[i] = Test.getArray()[j];
-                        j++;
-                    }
-                    if (i == Test.getDimX() * Test.getDimY() + tobuff.size() + Test.getDimY()) {
-                        newb[i] = '\0';
-                    }
-                    i++;
-                }
-                if (send(new_sock1, newb, Test.getDimX() * Test.getDimY() + tobuff.size() + Test.getDimY(), 0) ==
-                    -1)
-                    perror("default send to 1-st client");
+                ConstructAndSendBuffer(new_sock1, Test);
             }
-            //exit(1);
         }
         else {
             cout << "MAP CMD FROM 1" << endl;
@@ -254,95 +161,20 @@ char playerChar2 = 'K';
                     if (send(new_sock1, buffer, size, 0) == -1) {
                         perror("send MAP to 1-st client");
                     }
-                    cout <<" oldbuff to cl1" <<buffer << endl;
                     *isMapSentPtr1 = !(*isMapSentPtr1);
                 }
-
-                /*if ((*isMapSentPtr1)){
-
-                    //default map send
-                    string tobuff = std::to_string(Test.getDimY()) + " " + std::to_string(Test.getDimX());
-                    char newb[Test.getDimX() * Test.getDimY() + tobuff.size() + Test.getDimY()];
-                    for (int i = 0; i < tobuff.size(); i++) {
-                        newb[i] = tobuff[i];
-                    }
-                    for (int i = tobuff.size(), j = 0;
-                         i <= Test.getDimX() * Test.getDimY() + tobuff.size() + Test.getDimY();) {
-                        if (((i - tobuff.size()) % ((Test.getDimX()) + 1) == 0)) {
-                            newb[i] = '\n';
-                        } else {
-                            newb[i] = Test.getArray()[j];
-                            j++;
-                        }
-                        if (i == Test.getDimX() * Test.getDimY() + tobuff.size() + Test.getDimY()) {
-                            newb[i] = '\0';
-                        }
-                        i++;
-                    }
-                    if (send(new_sock1, newb, Test.getDimX() * Test.getDimY() + tobuff.size() + Test.getDimY(), 0) ==
-                        -1)
-                        perror("default send to 1-st client");
-                }*/
-
-               // if(isMapSent1 && isMapSent2) {
-
                     //Check recieved key from a client
                     if ((buf[0] == 'w') || (buf[0] == 'a')
                         || (buf[0] == 's') || (buf[0] == 'd')) {
-                        cout << "C-char" << buf[0] << endl;
-                        cout << "Test before cl1" << Test << endl;
                         //for some client move player and check win
                         chkKeyKeyAndMovePlayer(buf[0], tempPlrPos1, Test, playerChar1);
-                        cout << "Test after check cl1" << Test << endl;
                         updateWinPositions(Test, mapCharWin);
-                        cout << "Test after update cl1" << Test << endl;
-                        //construct buffer to send
-                        string tobuff = std::to_string(Test.getDimY()) + " " + std::to_string(Test.getDimX());
-                        char newb[Test.getDimX() * Test.getDimY() + tobuff.size() + Test.getDimY()];
-                        for (int i = 0; i < tobuff.size(); i++) {
-                            newb[i] = tobuff[i];
-                        }
-                        for (int i = tobuff.size(), j = 0;
-                             i <= Test.getDimX() * Test.getDimY() + tobuff.size() + Test.getDimY();) {
-                            if (((i - tobuff.size()) % ((Test.getDimX()) + 1) == 0)) {
-                                newb[i] = '\n';
-                            } else {
-                                newb[i] = Test.getArray()[j];
-                                j++;
-                            }
-                            if (i == Test.getDimX() * Test.getDimY() + tobuff.size() + Test.getDimY()) {
-                                newb[i] = '\0';
-                            }
-                            i++;
-                        }
-                        cout << "NewBuff to cl1" << newb << endl;
+                        
                         char *win = "win";
                         if (!ifWin(mapCharWin)) {
-                            if ((send(new_sock1, newb, Test.getDimX() * Test.getDimY() + tobuff.size() + Test.getDimY(), 0) ==
-                                -1))
-                                perror("send to 1-st client");
+                            ConstructAndSendBuffer(new_sock1, Test);
                         } else {
-                            string tobuff = std::to_string(Test.getDimY()) + " " + std::to_string(Test.getDimX());
-                            char newb[Test.getDimX() * Test.getDimY() + tobuff.size() + Test.getDimY()];
-                            for (int i = 0; i < tobuff.size(); i++) {
-                                newb[i] = tobuff[i];
-                            }
-                            for (int i = tobuff.size(), j = 0;
-                                 i <= Test.getDimX() * Test.getDimY() + tobuff.size() + Test.getDimY();) {
-                                if (((i - tobuff.size()) % ((Test.getDimX()) + 1) == 0)) {
-                                    newb[i] = '\n';
-                                } else {
-                                    newb[i] = 'w';
-                                    j++;
-                                }
-                                if (i == Test.getDimX() * Test.getDimY() + tobuff.size() + Test.getDimY()) {
-                                    newb[i] = '\0';
-                                }
-                                i++;
-                            }
-                            if (send(new_sock1, newb, Test.getDimX() * Test.getDimY() + tobuff.size() + Test.getDimY(), 0) ==
-                                -1)
-                                perror("send to 1-st client");
+                            ConstructAndSendBuffer(new_sock1, Test);
                             break;
                         }
                     }
@@ -350,188 +182,39 @@ char playerChar2 = 'K';
                 *t1 = false;
                 *t2 = true;
             }
-            /*else{
-                string tobuff = std::to_string(Test.getDimY()) + " " + std::to_string(Test.getDimX());
-                char newb[Test.getDimX() * Test.getDimY() + tobuff.size() + Test.getDimY()];
-                for (int i = 0; i < tobuff.size(); i++) {
-                    newb[i] = tobuff[i];
-                }
-                for (int i = tobuff.size(), j = 0;
-                     i <= Test.getDimX() * Test.getDimY() + tobuff.size() + Test.getDimY();) {
-                    if (((i - tobuff.size()) % ((Test.getDimX()) + 1) == 0)) {
-                        newb[i] = '\n';
-                    } else {
-                        newb[i] = Test.getArray()[j];
-                        j++;
-                    }
-                    if (i == Test.getDimX() * Test.getDimY() + tobuff.size() + Test.getDimY()) {
-                        newb[i] = '\0';
-                    }
-                    i++;
-                }
-                if (send(new_sock1, newb, Test.getDimX() * Test.getDimY() + tobuff.size() + Test.getDimY(), 0) ==
-                    -1)
-                    perror("default send to 1-st client");
-            }*/
         }
         buf[0] = {};
         //Request for MAP to server from client n2
-        if ((numbytes = recv(new_sock2, buf, MAXBUFFERSIZE - 1, 0)) == -1) {
-            //perror("recv from 2-d client");
+        if ((recv(new_sock2, buf, MAXBUFFERSIZE - 1, 0)) == -1) {
             if ((*isMapSentPtr2)){
-
                 //current map send
-
-                string tobuff = std::to_string(Test.getDimY()) + " " + std::to_string(Test.getDimX());
-                char newb[Test.getDimX() * Test.getDimY() + tobuff.size() + Test.getDimY()];
-                for (int i = 0; i < tobuff.size(); i++) {
-                    newb[i] = tobuff[i];
-                }
-                for (int i = tobuff.size(), j = 0;
-                     i <= Test.getDimX() * Test.getDimY() + tobuff.size() + Test.getDimY();) {
-                    if (((i - tobuff.size()) % ((Test.getDimX()) + 1) == 0)) {
-                        newb[i] = '\n';
-                    } else {
-                        newb[i] = Test.getArray()[j];
-                        j++;
-                    }
-                    if (i == Test.getDimX() * Test.getDimY() + tobuff.size() + Test.getDimY()) {
-                        newb[i] = '\0';
-                    }
-                    i++;
-                }
-                if (send(new_sock2, newb, Test.getDimX() * Test.getDimY() + tobuff.size() + Test.getDimY(), 0) ==
-                    -1)
-                    perror("default send to 2-d client");
+                ConstructAndSendBuffer(new_sock2, Test);
             }
-            //exit(1);
         } else {
             if (turn2) {
-                //Check code which recieved, to send map to client 1
-                //Check code which recieved, to send map
                 if (*buf == 'm' && !(*isMapSentPtr2)) {
                     if (send(new_sock2, buffer, size, 0) == -1) {
                         perror("send MAP to 2-d client");
                     }
-                    cout <<" oldbuff to cl2" <<buffer << endl;
                     *isMapSentPtr2 = !(*isMapSentPtr2);
                 }
-               /* if ((*isMapSentPtr2)){
-
-                    //default map send
-
-                    string tobuff = std::to_string(Test.getDimY()) + " " + std::to_string(Test.getDimX());
-                    char newb[Test.getDimX() * Test.getDimY() + tobuff.size() + Test.getDimY()];
-                    for (int i = 0; i < tobuff.size(); i++) {
-                        newb[i] = tobuff[i];
-                    }
-                    for (int i = tobuff.size(), j = 0;
-                         i <= Test.getDimX() * Test.getDimY() + tobuff.size() + Test.getDimY();) {
-                        if (((i - tobuff.size()) % ((Test.getDimX()) + 1) == 0)) {
-                            newb[i] = '\n';
-                        } else {
-                            newb[i] = Test.getArray()[j];
-                            j++;
-                        }
-                        if (i == Test.getDimX() * Test.getDimY() + tobuff.size() + Test.getDimY()) {
-                            newb[i] = '\0';
-                        }
-                        i++;
-                    }
-                    if (send(new_sock2, newb, Test.getDimX() * Test.getDimY() + tobuff.size() + Test.getDimY(), 0) ==
-                        -1)
-                        perror("default send to 2-d client");
-                }*/
-
-
-                // if(isMapSent1 && isMapSent2) {
-
                 //Check recieved key from a client
                 if ((buf[0] == 'w') || (buf[0] == 'a')
                     || (buf[0] == 's') || (buf[0] == 'd')) {
-                    //printf("server: received '%s'\n", buf);
-
                     //for some client move player and check win
                     chkKeyKeyAndMovePlayer(buf[0], tempPlrPos2, Test, playerChar2);
                     updateWinPositions(Test, mapCharWin);
-
-                    //construct buffer to send
-                    string tobuff = std::to_string(Test.getDimY()) + " " + std::to_string(Test.getDimX());
-                    char newb[Test.getDimX() * Test.getDimY() + tobuff.size() + Test.getDimY()];
-                    for (int i = 0; i < tobuff.size(); i++) {
-                        newb[i] = tobuff[i];
-                    }
-                    for (int i = tobuff.size(), j = 0;
-                         i <= Test.getDimX() * Test.getDimY() + tobuff.size() + Test.getDimY();) {
-                        if (((i - tobuff.size()) % ((Test.getDimX()) + 1) == 0)) {
-                            newb[i] = '\n';
-                        } else {
-                            newb[i] = Test.getArray()[j];
-                            j++;
-                        }
-                        if (i == Test.getDimX() * Test.getDimY() + tobuff.size() + Test.getDimY()) {
-                            newb[i] = '\0';
-                        }
-                        i++;
-                    }
-                    cout << "NewBuff to cl2" << newb << endl;
                     char *win = "win";
+                    //TO_DO WIN RULE
                     if (!ifWin(mapCharWin)) {
-                        if ((send(new_sock2, newb, Test.getDimX() * Test.getDimY() + tobuff.size() + Test.getDimY(), 0) ==
-                             -1))
-                            perror("send to 2-d client");
+                        ConstructAndSendBuffer(new_sock2, Test);
                     } else {
-                        string tobuff = std::to_string(Test.getDimY()) + " " + std::to_string(Test.getDimX());
-                        char newb[Test.getDimX() * Test.getDimY() + tobuff.size() + Test.getDimY()];
-                        for (int i = 0; i < tobuff.size(); i++) {
-                            newb[i] = tobuff[i];
-                        }
-                        for (int i = tobuff.size(), j = 0;
-                             i <= Test.getDimX() * Test.getDimY() + tobuff.size() + Test.getDimY();) {
-                            if (((i - tobuff.size()) % ((Test.getDimX()) + 1) == 0)) {
-                                newb[i] = '\n';
-                            } else {
-                                newb[i] = 'w';
-                                j++;
-                            }
-                            if (i == Test.getDimX() * Test.getDimY() + tobuff.size() + Test.getDimY()) {
-                                newb[i] = '\0';
-                            }
-                            i++;
-                        }
-                        if (send(new_sock2, newb, Test.getDimX() * Test.getDimY() + tobuff.size() + Test.getDimY(),
-                                 0) ==
-                            -1)
-                            perror("send to 2-d client");
+                        ConstructAndSendBuffer(new_sock2, Test);
                         break;
                     }
                 }
                 *t2 = false;
             }
-            /*else{
-                string tobuff = std::to_string(Test.getDimY()) + " " + std::to_string(Test.getDimX());
-                char newb[Test.getDimX() * Test.getDimY() + tobuff.size() + Test.getDimY()];
-                for (int i = 0; i < tobuff.size(); i++) {
-                    newb[i] = tobuff[i];
-                }
-                for (int i = tobuff.size(), j = 0;
-                     i <= Test.getDimX() * Test.getDimY() + tobuff.size() + Test.getDimY();) {
-                    if (((i - tobuff.size()) % ((Test.getDimX()) + 1) == 0)) {
-                        newb[i] = '\n';
-                    } else {
-                        newb[i] = Test.getArray()[j];
-                        j++;
-                    }
-                    if (i == Test.getDimX() * Test.getDimY() + tobuff.size() + Test.getDimY()) {
-                        newb[i] = '\0';
-                    }
-                    i++;
-                }
-                if (send(new_sock2, newb, Test.getDimX() * Test.getDimY() + tobuff.size() + Test.getDimY(), 0) ==
-                    -1)
-                    perror("default send to 2-d client");
-            }*/
-           // }
         }
         buf[0] = {};
         usleep(1000*20);
@@ -546,7 +229,6 @@ void *get_approp_addr(struct sockaddr *sock_a)
     }
     return &(((struct sockaddr_in6*)sock_a)->sin6_addr);
 }
-
 
 void chkKeyKeyAndMovePlayer(const char& key ,vector<int>& tmpPlrPos, TwoDimArray<char>& twoDimArray, const char& PlayerChar){
     if ( key == 'w' || key == 'W' ) {
@@ -660,6 +342,36 @@ void updateWinPositions(TwoDimArray<char>& twoDArray, map<vector<int>,char>& map
     }
 }
 
+string GetRandomFileByPath(const char* user_path){
+    srand( time(0) );
+    DIR *dir;
+    vector<char*> vecOfFiles;
+    string path_to_return = user_path;
+    struct dirent *ent;
+    if ((dir = opendir (user_path)) != NULL) {
+        while ((ent = readdir (dir)) != NULL) {
+            char* ch = ent -> d_name;
+            string tr = ent -> d_name;
+            char type[3];
+            type[0] = ch[tr.length() - 7];
+            type[1] = ch[tr.length() - 6];
+            type[2] = ch[tr.length() - 5];
+            type[3] = ch[tr.length() - 4];
+            type[4] = ch[tr.length() - 3];
+            type[5] = ch[tr.length() - 2];
+            type[6] = ch[tr.length() - 1];
+            if((type[0] == 'm') && (type[1] == 'a') && (type[2] == 'p')
+               && (type[3] == '.')
+               && (type[4] == 't') && (type[5] == 'x')&& (type[6] == 't')){
+                vecOfFiles.push_back(ch);
+            }
+        }
+        closedir (dir);
+    }
+    path_to_return += vecOfFiles[(rand() % vecOfFiles.size())];
+    return path_to_return;
+}
+
 bool ifWin(map<vector<int>,char>& mapOfWinPositions){
     decltype(mapOfWinPositions.size()) winCnt = 0;
     for (auto cross : mapOfWinPositions){
@@ -673,4 +385,36 @@ bool ifWin(map<vector<int>,char>& mapOfWinPositions){
     else{
         return false;
     }
+}
+
+void sigchld_handler(int s)
+{
+    // waitpid() might overwrite errno, so we save and restore it:
+    int saved_errno = errno;
+    while(waitpid(-1, NULL, WNOHANG) > 0);
+    errno = saved_errno;
+}
+
+void ConstructAndSendBuffer(const int socket_desctriptor, TwoDimArray<char>& TDA) {
+    string tobuff = std::to_string(TDA.getDimY()) + " " + std::to_string(TDA.getDimX());
+    char newb[TDA.getDimX() * TDA.getDimY() + tobuff.size() + TDA.getDimY()];
+    for (int i = 0; i < tobuff.size(); i++) {
+        newb[i] = tobuff[i];
+    }
+    for (int i = tobuff.size(), j = 0;
+         i <= TDA.getDimX() * TDA.getDimY() + tobuff.size() + TDA.getDimY();) {
+        if (((i - tobuff.size()) % ((TDA.getDimX()) + 1) == 0)) {
+            newb[i] = '\n';
+        } else {
+            newb[i] = TDA.getArray()[j];
+            j++;
+        }
+        if (i == TDA.getDimX() * TDA.getDimY() + tobuff.size() + TDA.getDimY()) {
+            newb[i] = '\0';
+        }
+        i++;
+    }
+    if (send(socket_desctriptor, newb, TDA.getDimX() * TDA.getDimY() + tobuff.size() + TDA.getDimY(), 0) ==
+        -1)
+        perror("default send to 1-st client");
 }
