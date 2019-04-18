@@ -50,9 +50,12 @@ bool ifWin(map<vector<int>,char>& mapOfWinPositions);
 //That fucntion processes appropriate ip4 or ip6 address
 void *get_approp_addr(struct sockaddr *sock_a);
 
+//That function return random file
+string GetRandomFileByPath(const char* user_path);
+
 int main(void)
 {
-    string GetRandomFileByPath(const char* user_path);
+    
     TwoDimArray<char> Test;
     vector<int> tempPlrPos1; //temporary player1 position vector (x,y)
     vector<int> tempPlrPos2; //temporary player2 position vector (x,y)
@@ -61,8 +64,7 @@ int main(void)
     char playerChar2 = 'K'; // character denotes 1-st player
     const char* path = "/home/akuznetsov/Client-server-sokoban/"; //path with maps
     string fileName = GetRandomFileByPath(path); //call to function, which return full path to a random file
-    string tobuff;
-    char* newb;
+    
     
     
     ifstream in(fileName);
