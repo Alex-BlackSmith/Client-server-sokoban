@@ -68,7 +68,6 @@ void PaintOfScreen(const TwoDimArray<char>& TwoDArray, const vector<TCODColor>& 
     TCODConsole::root->flush();
 }
 
-
 // get appropriate sockaddress, IPv4 or IPv6:
 void *get_approp_addr(struct sockaddr *sock_a);
 
@@ -80,7 +79,6 @@ struct membuf : std::streambuf
     }
 };
 
-
 int main(int argc, char *argv[])
 {
     const TCODColor player1 {0,255,0};
@@ -91,22 +89,13 @@ int main(int argc, char *argv[])
     const vector<TCODColor> colourVec = {player1,player2, wall, box, winCross}; //0 - player, 1 - wall, 2 - box, 3 - winCross
     map<vector<int>,char> mapCharWin;
 
-
-
-
-
     TwoDimArray<char> Test; //create instance of 2DArray class
     bool isMapRecieved = false;
-    int socket_desc, numbytes;
+    int socket_desc;
 
     struct addrinfo hints, *list_of_server_info, *p;
     int getaddrinfo_code;
     char address_pres[INET6_ADDRSTRLEN];
-
-    /*if (argc != 2) {
-        fprintf(stderr,"usage: client hostname\n");
-        exit(1);
-    }*/
 
     memset(&hints, 0, sizeof hints);
     hints.ai_family = AF_UNSPEC;
@@ -134,13 +123,11 @@ int main(int argc, char *argv[])
         }
         break;
     }
-    //fcntl(socket_desc,F_SETFL, O_NONBLOCK);
+
     if (p == NULL) {
         fprintf(stderr, "client: failed to connect\n");
         return 2;
     }
-
-    //freeaddrinfo(list_of_server_info); // all done with this structure
 
     while(true){
 
@@ -151,9 +138,8 @@ int main(int argc, char *argv[])
 
 
         if (isMapRecieved) {
-            if ((numbytes = recv(socket_desc, buf, MAXBUFFERSIZE, 0)) == -1) {
+            if ((recv(socket_desc, buf, MAXBUFFERSIZE, 0)) == -1) {
                 perror("recv");
-                //exit(1);
             }
             membuf str_buf(buf, buf + sizeof(buf));
             std::istream in(&str_buf);
@@ -164,22 +150,20 @@ int main(int argc, char *argv[])
         if (ch.c == 'm' && !isMapRecieved) {
             if (send(socket_desc, &ch.c, 1, 0) == -1)
                 perror("send");
-            if ((numbytes = recv(socket_desc, buf, MAXBUFFERSIZE, 0)) == -1) {
+            if ((recv(socket_desc, buf, MAXBUFFERSIZE, 0)) == -1) {
                 perror("recv");
-                //exit(1);
             }
             membuf str_buf(buf, buf + sizeof(buf));
             std::istream in(&str_buf);
             in >> Test;
             PaintOfScreen(Test, colourVec, isMapRecieved);
             isMapRecieved = true;
-        }else if((/*ev == TCOD_EVENT_KEY_PRESS && */((ch.c == 'w') || (ch.c == 'a')
+        }else if((((ch.c == 'w') || (ch.c == 'a')
                                                 || (ch.c == 's') || (ch.c == 'd')))) {
             if (send(socket_desc, &ch.c, 1, 0) == -1)
                 perror("send");
-            if ((numbytes = recv(socket_desc, buf, MAXBUFFERSIZE, 0)) == -1) {
+            if ((recv(socket_desc, buf, MAXBUFFERSIZE, 0)) == -1) {
                 perror("recv");
-                //exit(1);
             }
             membuf str_buf(buf, buf + sizeof(buf));
             std::istream in(&str_buf);
@@ -191,22 +175,8 @@ int main(int argc, char *argv[])
             PaintOfScreen(Test, colourVec, isMapRecieved);
         }
 
-           // ev = TCODSystem::waitForEvent(TCOD_EVENT_KEY_PRESS, &ch, &mouse, true);
-            ch = TCODConsole::checkForKeypress(true);
+        ch = TCODConsole::checkForKeypress(true);
         usleep(1000*20);
-
-       /* if (!(ch.c == 'm' || (ch.c == 'w') || (ch.c == 'a')
-              || (ch.c == 's') || (ch.c == 'd'))){
-            if ((recv(socket_desc, buf, MAXBUFFERSIZE, 0)) == -1) {
-                perror("recv");
-                //exit(1);
-            }
-            membuf str_buf(buf, buf + sizeof(buf));
-            std::istream in(&str_buf);
-            in >> Test;
-            PaintOfScreen(Test, colourVec, isMapRecieved);
-            continue;
-        }*/
     }
     return 0;
 }
